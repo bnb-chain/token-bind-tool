@@ -53,26 +53,22 @@ make build
     You can refer to [BEP20 Template](https://github.com/binance-chain/bsc-genesis-contract/blob/master/contracts/bep20_template/BEP20Token.template) and modify it according to your own requirements. Compile your contract with [Remix](https://remix.ethereum.org) and get contract byte code:
     ![img](pictures/compile.png)
     
-7. Edit `script/config.json`
+7. Edit `script/contract.json`
 
     ```json
     {
-      "contract_data": "",
-      "bep20_symbol": "",
-      "bep2_symbol": "",
-      "final_bep20_owner": ""
+      "contract_data": ""
     }
     ```
-    Fill contract byte code to `contract_data`, fill BEP20 contract symbol to `bep20_symbol`, fill BEP2 token symbol to `bep2_symbol` and fill your owner account to `final_bep20_owner`. Once the bind is success, the BEP20 token ownership will be transfer to your owner account.
-   
+    Fill contract byte code to `contract_data`
+
 ## Bind BEP2 token with BEP20 token
 
-
     ```shell script
-    ./bind {network type} {bep2TokenOwnerKeyName} {peggyAmount} {bep2 token symbol} {final token owner} {path to bnbcli or tbnbcli}
+    ./script/bind.sh {network type} {bep2TokenOwnerKeyName} {password} {peggyAmount} {bep2 token symbol} {token owner} {path to bnbcli or tbnbcli}
     ```
 
     Example command:
     ```shell script
-    ./bind.sh mainnet bep2TokenOwner 0 ETH-2C2 0xaa25Aa7a19f9c426E07dee59b12f944f4d9f1DD3 $HOME/go/bin/bnbcli
+    ./script/bind.sh testnet bep2TokenOwner "12345678" 0 ABC-83D 0xaa25Aa7a19f9c426E07dee59b12f944f4d9f1DD3 $HOME/go/bin/tbnbcli
     ```

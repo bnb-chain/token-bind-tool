@@ -195,14 +195,17 @@ func ApproveBindAndTransferOwnershipCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			configPath := viper.GetString(constValue.ConfigPath)
-			configData, err := config.ReadConfigData(configPath)
-			if err != nil {
-				return err
-			}
 			bep20ContractAddr := viper.GetString(constValue.BEP20ContractAddr)
 			if !strings.HasPrefix(bep20ContractAddr, "0x") || len(bep20ContractAddr) != constValue.BSCAddrLength {
 				return fmt.Errorf("invalid bep20 contract address")
+			}
+			bep20Owner := viper.GetString(constValue.BEP20Owner)
+			if utils.ValidatorBSCAddr(bep20Owner) !=nil {
+				return err
+			}
+			bep2Symbol := viper.GetString(constValue.BEP2Symbol)
+			if len(bep2Symbol) == 0 {
+				return fmt.Errorf("missing bep2 symbol")
 			}
 
 			keystorePath := viper.GetString(constValue.KeystorePath)
@@ -215,12 +218,13 @@ func ApproveBindAndTransferOwnershipCmd() *cobra.Command {
 				peggyAmount = big.NewInt(0)
 				peggyAmount.SetString(viper.GetString(constValue.PeggyAmount), 10)
 			}
-			return ApproveBindAndTransferOwnershipAndRestBalanceBackToLedgerAccount(ethClient, keyStore, tempAccount, configData, common.HexToAddress(bep20ContractAddr), peggyAmount, chainId)
+			return ApproveBindAndTransferOwnershipAndRestBalanceBackToLedgerAccount(ethClient, keyStore, tempAccount, common.HexToAddress(bep20ContractAddr), peggyAmount, bep2Symbol, common.HexToAddress(bep20Owner), chainId)
 		},
 	}
 	cmd.Flags().String(constValue.KeystorePath, constValue.BindKeystore, "keystore path")
-	cmd.Flags().String(constValue.ConfigPath, "", "config file path")
 	cmd.Flags().String(constValue.BEP20ContractAddr, "", "bep20 contract address")
+	cmd.Flags().String(constValue.BEP20Owner, "", "bep20 token owner")
+	cmd.Flags().String(constValue.BEP2Symbol, "", "bep2 token symbol")
 	cmd.Flags().String(constValue.PeggyAmount, "", "peggy amount, derived from peggy amount in bind transaction on Binance Chain. If bep20 decimals is 18(bep2 token decimals is always 8), peggy amount in bind transfer is 100, then here the peggy amount should be 100*10^10")
 	return cmd
 }
@@ -244,16 +248,20 @@ func DeployBEP20ContractTransferTotalSupplyAndOwnershipCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			bep20Owner := viper.GetString(constValue.BEP20Owner)
+			if utils.ValidatorBSCAddr(bep20Owner) !=nil {
+				return err
+			}
 			contractAddr, err := DeployContractFromTempAccount(ethClient, keyStore, tempAccount, config.ContractData, chainId)
 			if err != nil {
 				return err
 			}
-			return TransferTokenAndOwnership(ethClient, keyStore, tempAccount, common.HexToAddress(config.FinalBEP20Owner), contractAddr, chainId)
+			return TransferTokenAndOwnership(ethClient, keyStore, tempAccount, common.HexToAddress(bep20Owner), contractAddr, chainId)
 		},
 	}
 	cmd.Flags().String(constValue.KeystorePath, constValue.BindKeystore, "keystore path")
 	cmd.Flags().String(constValue.ConfigPath, "", "config file path")
-	cmd.Flags().String(constValue.BEP20ContractAddr, "", "bep20 contract address")
+	cmd.Flags().String(constValue.BEP20Owner, "", "bep20 contract address")
 	return cmd
 }
 
@@ -349,7 +357,7 @@ func DeployContractFromTempAccount(ethClient *ethclient.Client, keyStore *keysto
 	return contractAddr, nil
 }
 
-func ApproveBindAndTransferOwnershipAndRestBalanceBackToLedgerAccount(ethClient *ethclient.Client, keyStore *keystore.KeyStore, tempAccount accounts.Account, configData config.Config, bep20ContractAddr common.Address, peggyAmount *big.Int, chainId *big.Int) error {
+func ApproveBindAndTransferOwnershipAndRestBalanceBackToLedgerAccount(ethClient *ethclient.Client, keyStore *keystore.KeyStore, tempAccount accounts.Account, bep20ContractAddr common.Address, peggyAmount *big.Int, bep2Symbol string, bep20Owner common.Address, chainId *big.Int) error {
 	bep20Instance, err := bep20.NewBep20(bep20ContractAddr, ethClient)
 	if err != nil {
 		return err
@@ -360,7 +368,7 @@ func ApproveBindAndTransferOwnershipAndRestBalanceBackToLedgerAccount(ethClient 
 	}
 	var lockAmount *big.Int
 	if peggyAmount == nil {
-		lockAmount, err = tokenManagerInstance.QueryRequiredLockAmountForBind(utils.GetCallOpts(), configData.BEP2Symbol)
+		lockAmount, err = tokenManagerInstance.QueryRequiredLockAmountForBind(utils.GetCallOpts(), bep2Symbol)
 		if err != nil {
 			return err
 		}
@@ -375,7 +383,7 @@ func ApproveBindAndTransferOwnershipAndRestBalanceBackToLedgerAccount(ethClient 
 		}
 	}
 
-	fmt.Println(fmt.Sprintf("Approve %s:%s to TokenManager from %s", lockAmount.String(), configData.BEP20Symbol, tempAccount.Address.String()))
+	fmt.Println(fmt.Sprintf("Approve %s:%s to TokenManager from %s", lockAmount.String(), bep2Symbol, tempAccount.Address.String()))
 	approveTxHash, err := bep20Instance.Approve(utils.GetTransactor(ethClient, keyStore, tempAccount, big.NewInt(0)), constValue.TokenManagerContractAddr, lockAmount)
 	if err != nil {
 		return err
@@ -393,7 +401,7 @@ func ApproveBindAndTransferOwnershipAndRestBalanceBackToLedgerAccount(ethClient 
 		return err
 	}
 
-	approveBindTx, err := tokenManagerInstance.ApproveBind(utils.GetTransactor(ethClient, keyStore, tempAccount, miniRelayerFee), bep20ContractAddr, configData.BEP2Symbol)
+	approveBindTx, err := tokenManagerInstance.ApproveBind(utils.GetTransactor(ethClient, keyStore, tempAccount, miniRelayerFee), bep20ContractAddr, bep2Symbol)
 	if err != nil {
 		return err
 	}
@@ -408,7 +416,7 @@ func ApproveBindAndTransferOwnershipAndRestBalanceBackToLedgerAccount(ethClient 
 	fmt.Println("Track approveBind Tx status")
 	if approveBindTxRecipient.Status != 1 {
 		fmt.Println("Approve Bind Failed")
-		rejectBindTx, err := tokenManagerInstance.RejectBind(utils.GetTransactor(ethClient, keyStore, tempAccount, miniRelayerFee), bep20ContractAddr, configData.BEP2Symbol)
+		rejectBindTx, err := tokenManagerInstance.RejectBind(utils.GetTransactor(ethClient, keyStore, tempAccount, miniRelayerFee), bep20ContractAddr, bep2Symbol)
 		if err != nil {
 			return err
 		}
@@ -430,8 +438,8 @@ func ApproveBindAndTransferOwnershipAndRestBalanceBackToLedgerAccount(ethClient 
 		return err
 	}
 	if restBEP20Balance.Cmp(big.NewInt(0)) > 0 {
-		fmt.Println(fmt.Sprintf("Refund rest BEP20 balance %s to %s", restBEP20Balance.String(), configData.FinalBEP20Owner))
-		refundRestBEP20BalanceTxHash, err := bep20Instance.Transfer(utils.GetTransactor(ethClient, keyStore, tempAccount, big.NewInt(0)), common.HexToAddress(configData.FinalBEP20Owner), restBEP20Balance)
+		fmt.Println(fmt.Sprintf("Refund rest BEP20 balance %s to %s", restBEP20Balance.String(), bep20Owner))
+		refundRestBEP20BalanceTxHash, err := bep20Instance.Transfer(utils.GetTransactor(ethClient, keyStore, tempAccount, big.NewInt(0)), bep20Owner, restBEP20Balance)
 		if err != nil {
 			return err
 		}
@@ -444,7 +452,7 @@ func ApproveBindAndTransferOwnershipAndRestBalanceBackToLedgerAccount(ethClient 
 		return err
 	}
 	fmt.Println(fmt.Sprintf("Transfer ownership to account %s", tempAccount.Address.String()))
-	transferOwnerShipTxHash, err := ownershipInstance.TransferOwnership(utils.GetTransactor(ethClient, keyStore, tempAccount, big.NewInt(0)), common.HexToAddress(configData.FinalBEP20Owner))
+	transferOwnerShipTxHash, err := ownershipInstance.TransferOwnership(utils.GetTransactor(ethClient, keyStore, tempAccount, big.NewInt(0)), bep20Owner)
 	if err != nil {
 		return err
 	}

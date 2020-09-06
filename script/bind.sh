@@ -2,19 +2,21 @@
 
 networkType=$1
 bep2TokenOwnerKeyName=$2
-peggyAmount=$3
-bep2TokenSymbol=$4
-tokenOwner=$5
-binaryPath=$6
+passwd=$3
+peggyAmount=$4
+bep2TokenSymbol=$5
+tokenOwner=$6
+binaryPath=$7
 
-echo "network type:" $networkType
-echo "bep2TokenOwnerKeyName:" $bep2TokenOwnerKeyName
-echo "token name:" $tokenName
-echo "peggy amount:" $peggyAmount
-echo "bep2 symbol:" $bep2TokenSymbol
-echo "token owner" $tokenOwner
+echo "network type: " $networkType
+echo "bep2TokenOwnerKeyName: " $bep2TokenOwnerKeyName
+echo "passwd: " $passwd
+echo "peggy amount: " $peggyAmount
+echo "bep2 symbol: " $bep2TokenSymbol
+echo "token owner: " $tokenOwner
+echo "bnbcli or tbnbcli path: " $binaryPath
 
-chmod +x ./binary/*
+echo "start to bind"
 
 chainId="Binance-Chain-Tigris"
 if [ $networkType == "testnet" ]
@@ -27,16 +29,17 @@ then
    nodeUrl="http://data-seed-pre-0-s3.binance.org:80"
 fi
 
-./build/token-bind-tool deployContract --config-path script/config.json --network-type $networkType
+./build/token-bind-tool deployContract --config-path script/contract.json --network-type $networkType
 
 echo "Please input the new deploy bep20 contract address "
 read bep20ContractAddr
 
-$binaryPath bridge bind --symbol $bep2TokenSymbol --amount $peggyAmount --expire-time `expr $(date +%s) + 3600` \
+echo $passwd | $binaryPath bridge bind --symbol $bep2TokenSymbol --amount $peggyAmount --expire-time `expr $(date +%s) + 3600` \
 --contract-decimals 18 --from $bep2TokenOwnerKeyName --chain-id $chainId --contract-address $bep20ContractAddr \
 --node $nodeUrl
 
 echo "Sleep 10 second"
 sleep 10
 
-./build/token-bind-tool approveBindAndTransferOwnership --config-path tokens/$tokenName/$tokenName.json --bep20-contract-addr $bep20ContractAddr --network-type $networkType --peggy-amount $peggyAmount
+./build/token-bind-tool approveBindAndTransferOwnership --bep20-contract-addr $bep20ContractAddr \
+--network-type $networkType --peggy-amount $peggyAmount --bep2-symbol $bep2TokenSymbol --bep20-owner $tokenOwner

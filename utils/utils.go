@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	bindconst "github.com/binance-chain/token-bind-tool/const"
@@ -178,4 +179,11 @@ func SendTransactionFromLedger(rpcClient *ethclient.Client, wallet accounts.Wall
 		return nil, err
 	}
 	return signTx, rpcClient.SendTransaction(context.Background(), signTx)
+}
+
+func ValidatorBSCAddr(addr string) error {
+	if !strings.HasPrefix(addr, "0x") || len(addr) != 42 {
+		return fmt.Errorf("invalid BEP20 owner account, expect bsc address, like 0x4E656459ed25bF986Eea1196Bc1B00665401645d")
+	}
+	return nil
 }

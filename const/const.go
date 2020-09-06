@@ -12,6 +12,7 @@ const (
 	ConfigPath          = "config-path"
 	Operation           = "operation"
 	BEP20ContractAddr   = "bep20-contract-addr"
+	BEP20Owner          = "bep20-owner"
 	BEP2Symbol          = "bep2-symbol"
 	Recipient           = "recipient"
 	PeggyAmount         = "peggy-amount"

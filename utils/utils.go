@@ -187,3 +187,13 @@ func ValidatorBSCAddr(addr string) error {
 	}
 	return nil
 }
+
+func ConvertToBEP20Amount(amount *big.Int, decimals int64) *big.Int {
+	if decimals >= 8 {
+		precision := 10^(decimals - 8)
+		return big.NewInt(1).Mul(amount, big.NewInt(int64(precision)))
+	} else {
+		precision := 10^(8 - decimals)
+		return big.NewInt(1).Div(amount, big.NewInt(int64(precision)))
+	}
+}

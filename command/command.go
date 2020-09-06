@@ -225,7 +225,7 @@ func ApproveBindAndTransferOwnershipCmd() *cobra.Command {
 	cmd.Flags().String(constValue.BEP20ContractAddr, "", "bep20 contract address")
 	cmd.Flags().String(constValue.BEP20Owner, "", "bep20 token owner")
 	cmd.Flags().String(constValue.BEP2Symbol, "", "bep2 token symbol")
-	cmd.Flags().String(constValue.PeggyAmount, "", "peggy amount, derived from peggy amount in bind transaction on Binance Chain. If bep20 decimals is 18(bep2 token decimals is always 8), peggy amount in bind transfer is 100, then here the peggy amount should be 100*10^10")
+	cmd.Flags().String(constValue.PeggyAmount, "", "peggy amount, which is identical to the peggy amount in bind transaction")
 	return cmd
 }
 
@@ -303,7 +303,7 @@ func ApproveBindFromLedgerCmd() *cobra.Command {
 	cmd.Flags().String(constValue.BEP20ContractAddr, "", "bep20 contract address")
 	cmd.Flags().String(constValue.BEP2Symbol, "", "bep2 token symbol")
 	cmd.Flags().Int64(constValue.LedgerAccountIndex, 0, "ledger account index")
-	cmd.Flags().String(constValue.PeggyAmount, "", "peggy amount, derived from peggy amount in bind transaction on Binance Chain. If bep20 decimals is 18(bep2 token decimals is always 8), peggy amount in bind transfer is 100, then here the peggy amount should be 100*10^10")
+	cmd.Flags().String(constValue.PeggyAmount, "", "peggy amount, which is identical to the peggy amount in bind transaction")
 	return cmd
 }
 
@@ -377,7 +377,12 @@ func ApproveBindAndTransferOwnershipAndRestBalanceBackToLedgerAccount(ethClient 
 		if err != nil {
 			return err
 		}
-		lockAmount = big.NewInt(1).Sub(totalSupply, peggyAmount)
+		decimals, err := bep20Instance.Decimals(utils.GetCallOpts())
+		if err != nil {
+			return err
+		}
+
+		lockAmount = big.NewInt(1).Sub(totalSupply, utils.ConvertToBEP20Amount(peggyAmount, decimals.Int64()))
 		if lockAmount.Cmp(big.NewInt(0)) < 0 {
 			return fmt.Errorf("peggy amount is large than total supply")
 		}
@@ -481,7 +486,11 @@ func ApproveBind(ethClient *ethclient.Client, ledgerWallet accounts.Wallet, ledg
 		if err != nil {
 			return err
 		}
-		lockAmount = big.NewInt(1).Sub(totalSupply, peggyAmount)
+		decimals, err := bep20Instance.Decimals(utils.GetCallOpts())
+		if err != nil {
+			return err
+		}
+		lockAmount = big.NewInt(1).Sub(totalSupply, utils.ConvertToBEP20Amount(peggyAmount, decimals.Int64()))
 		if lockAmount.Cmp(big.NewInt(0)) < 0 {
 			return fmt.Errorf("peggy amount is large than total supply")
 		}

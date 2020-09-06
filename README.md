@@ -70,5 +70,5 @@ make build
 
     Example command:
     ```shell script
-    ./script/bind.sh testnet bep2TokenOwner "12345678" 0 ABC-83D 0xaa25Aa7a19f9c426E07dee59b12f944f4d9f1DD3 $HOME/go/bin/tbnbcli
+    ./script/bind.sh testnet lhy "12345678" 0 ABC-520 0xaa25Aa7a19f9c426E07dee59b12f944f4d9f1DD3 $HOME/go/bin/tbnbcli
     ```

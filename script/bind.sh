@@ -34,12 +34,20 @@ fi
 echo "Please input the new deploy bep20 contract address "
 read bep20ContractAddr
 
-echo $passwd | $binaryPath bridge bind --symbol $bep2TokenSymbol --amount $peggyAmount --expire-time `expr $(date +%s) + 3600` \
+if [ $passwd == "" ]
+then
+   $binaryPath bridge bind --symbol $bep2TokenSymbol --amount $peggyAmount --expire-time `expr $(date +%s) + 3600` \
 --contract-decimals 18 --from $bep2TokenOwnerKeyName --chain-id $chainId --contract-address $bep20ContractAddr \
 --node $nodeUrl
+else
+  echo $passwd | $binaryPath bridge bind --symbol $bep2TokenSymbol --amount $peggyAmount --expire-time `expr $(date +%s) + 3600` \
+--contract-decimals 18 --from $bep2TokenOwnerKeyName --chain-id $chainId --contract-address $bep20ContractAddr \
+--node $nodeUrl
+fi
 
-echo "Sleep 10 second"
-sleep 10
+
+echo "Sleep 30 second"
+sleep 30
 
 ./build/token-bind-tool approveBindAndTransferOwnership --bep20-contract-addr $bep20ContractAddr \
 --network-type $networkType --peggy-amount $peggyAmount --bep2-symbol $bep2TokenSymbol --bep20-owner $tokenOwner

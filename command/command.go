@@ -420,7 +420,7 @@ func ApproveBindAndTransferOwnershipAndRestBalanceBackToLedgerAccount(ethClient 
 	}
 	fmt.Println("Track approveBind Tx status")
 	if approveBindTxRecipient.Status != 1 {
-		fmt.Println("Approve Bind Failed")
+		fmt.Println("Approve Bind is failed")
 		rejectBindTx, err := tokenManagerInstance.RejectBind(utils.GetTransactor(ethClient, keyStore, tempAccount, miniRelayerFee), bep20ContractAddr, bep2Symbol)
 		if err != nil {
 			return err
@@ -434,16 +434,16 @@ func ApproveBindAndTransferOwnershipAndRestBalanceBackToLedgerAccount(ethClient 
 		}
 		fmt.Println(fmt.Sprintf("reject bind tx recipient status %d", rejectBindTxRecipient.Status))
 		return nil
+	} else {
+		fmt.Println("Approve Bind is successful")
 	}
-
-	utils.Sleep(10)
 
 	restBEP20Balance, err := bep20Instance.BalanceOf(utils.GetCallOpts(), tempAccount.Address)
 	if err != nil {
 		return err
 	}
 	if restBEP20Balance.Cmp(big.NewInt(0)) > 0 {
-		fmt.Println(fmt.Sprintf("Refund rest BEP20 balance %s to %s", restBEP20Balance.String(), bep20Owner))
+		fmt.Println(fmt.Sprintf("Refund rest BEP20 balance %s to %s", restBEP20Balance.String(), bep20Owner.String()))
 		refundRestBEP20BalanceTxHash, err := bep20Instance.Transfer(utils.GetTransactor(ethClient, keyStore, tempAccount, big.NewInt(0)), bep20Owner, restBEP20Balance)
 		if err != nil {
 			return err
@@ -456,7 +456,7 @@ func ApproveBindAndTransferOwnershipAndRestBalanceBackToLedgerAccount(ethClient 
 	if err != nil {
 		return err
 	}
-	fmt.Println(fmt.Sprintf("Transfer ownership to account %s", tempAccount.Address.String()))
+	fmt.Println(fmt.Sprintf("Transfer ownership to %s", tempAccount.Address.String()))
 	transferOwnerShipTxHash, err := ownershipInstance.TransferOwnership(utils.GetTransactor(ethClient, keyStore, tempAccount, big.NewInt(0)), bep20Owner)
 	if err != nil {
 		return err

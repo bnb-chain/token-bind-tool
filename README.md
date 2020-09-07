@@ -1,5 +1,6 @@
 # token-bind-tool
-Tool to bind BEP2 tokens and BEP20 tokens
+
+Tool to bind BEP2 tokens and BEP20 tokens. please refer to [document](https://docs.binance.org/smart-chain/developer/bind-tokens.html) for detail bind mechanism.
 
 ## Compile
 
@@ -10,29 +11,18 @@ make build
 
 ## Preparation for binding tokens
 
-1. Connect ledger to your computer and open Binance Chain App
-2. Import bep2 token owner key:
-
-    3.1 From ledger
+1. Generate temp account (Deploy contract on Binance Smart Chain):
     ```shell script
-    bnbcli keys add bep2TokenOwner --ledger --index 0
-    ```
-    3.2 From mnemonic
-    ```shell script
-    bnbcli keys add bep2TokenOwner --recover
-    ```
-3. Generate temp account:
-    ```shell script
-    ./build/token-bind-tool initKey --network-type mainnet
+    ./build/token-bind-tool initKey --network-type {testnet/mainnet}
     ```
     Example response:
     ```text
-    Temp account: 0xde9Aa1d632b48d881B50528FC524C88474Ec8809, Explorer url: :  https://bscscan.com/address/0xde9Aa1d632b48d881B50528FC524C88474Ec8809
+    Temp account: 0xde9Aa1d632b48d881B50528FC524C88474Ec8809, Explorer url: https://bscscan.com/address/0xde9Aa1d632b48d881B50528FC524C88474Ec8809
     ```
    
-4. Transfer 1 BNB to the temp account.
+2. Transfer 1 BNB to the temp account.
    
-   4.1 Cross chain transfer
+   2.1 Cross chain transfer
    ```shell script
     bnbcli bridge transfer-out --expire-time `expr $(date +%s) + 3600` \
     --chain-id Binance-Chain-Tigris --from {keyName} --node http://dataseed4.binance.org:80 \
@@ -41,18 +31,43 @@ make build
    Example command:
    ```shell script
    bnbcli bridge transfer-out --expire-time `expr $(date +%s) + 3600` \
-   --chain-id Binance-Chain-Tigris --from bep2TokenOwner --node http://dataseed4.binance.org:80 \
-   --to 0xde9Aa1d632b48d881B50528FC524C88474Ec8809 --amount 200000000:BNB
+   --chain-id Binance-Chain-Tigris --from bep2TokenIssuer --node http://dataseed4.binance.org:80 \
+   --to 0xde9Aa1d632b48d881B50528FC524C88474Ec8809 --amount 100000000:BNB
    ```
    
-   4.2 You can also transfer BNB from other Binance Smart Chain account with Metamask.
+   2.2 You can also transfer BNB from other Binance Smart Chain account with [Metamask](https://docs.binance.org/smart-chain/wallet/metamask.html).
 
-5. Prepare BEP20 contract code
+## Bind BEP2 token with BEP20 token
 
-    You can refer to [BEP20 Template](https://github.com/binance-chain/bsc-genesis-contract/blob/master/contracts/bep20_template/BEP20Token.template) and modify it according to your own requirements. Compile your contract with [Remix](https://remix.ethereum.org) and get contract byte code:
+### Case 1
+
+Suppose you have already issued a BEP2 token, and you want to deploy a BEP20 token and bind it with existing BEP2 token:
+
+1. Import bep2 token owner key(Send bind transaction on Binance Chain):
+
+    1.1 From ledger: connect ledger to your computer and open Binance Chain App
+    ```shell script
+    bnbcli keys add bep2TokenIssuer --ledger --index {your ledger key index}
+    ```
+    1.2 From mnemonic:
+    ```shell script
+    bnbcli keys add bep2TokenIssuer --recover
+    ```
+
+2. Prepare BEP20 contract code
+
+    2.1 You can refer to [BEP20 Template](https://github.com/binance-chain/bsc-genesis-contract/blob/master/contracts/bep20_template/BEP20Token.template) and modify it according to your own requirements.
+        
+    **NOTE 1:** Ensure the BEP20 symbol is identical to the prefix of a BEP2 token symbol. Suppose a BEP2 token symbol is `ABC-123`, then the BEP20 symbol must be `ABC`.
+    
+    **NOTE 2:** Ensure the total supply equals to the BEP2 token total supply. As we know, the decimals of BEP2 tokens are 8, if the BEP20 decimal is 18, then the BEP20 total supply must be `BEP2_total_supply*10^10`.
+
+    **NOTE 3:** If your BEP2 token is mintable, then you'd better implement `mint` in BEP20 contract. Otherwise, you'd better remove `mint` in BEP20 contract.
+   
+    2.2 Compile your contract with [Remix](https://remix.ethereum.org) and get contract byte code:
     ![img](pictures/compile.png)
     
-6. Edit `script/contract.json`
+3. Edit `script/contract.json` to add contract byte code:
 
     ```json
     {
@@ -61,19 +76,37 @@ make build
     ```
     Fill contract byte code to `contract_data`
 
-## Bind BEP2 token with BEP20 token
+4. Deploy contract, bind and transfer ownership:
+    ```shell script
+    ./script/bind.sh {mainnet/testnet} {bep2TokenIssuerKeyName} {password, for ledger key, use empty string: ""} {peggyAmount} {bep2 token symbol} {token owner} {path to bnbcli or tbnbcli}
+    ```
 
-1. Suppose you have already issued a BEP2 token, and you want to deploy a BEP20 token and bind it with existing BEP2 token:
+    Example command:
+    ```shell script
+    ./script/bind.sh testnet bep2TokenIssuer "12345678" 0 ABC-D9B 0xaa25Aa7a19f9c426E07dee59b12f944f4d9f1DD3 $HOME/go/bin/tbnbcli
+    ```
+
+### Case 2
+
+Suppose you have already issued BEP2 token, deployed BEP20 contract and sent bind transaction, now you just want to approve bind from your Ledger device:
+
+1. Connect ledger to your machine and open Ethereum app.
+2. Execute this command to approve bind:
 ```shell script
-./script/bind.sh {network type} {bep2TokenOwnerKeyName} {password} {peggyAmount} {bep2 token symbol} {token owner} {path to bnbcli or tbnbcli}
+./build/token-bind-tool approveBindFromLedger --bep2-symbol {bep2 symbol} --bep20-contract-addr {bep20 contract address} \
+--ledger-account-index {ledger key index} --peggy-amount {peggy amount} --network-type {mainnet/testnet}
 ```
 
-Example command:
+### Case 3
+
+Suppose you just want to deploy a BEP20 contract and transfer all token and ownership to your owner account, then you can try this command:
 ```shell script
-./script/bind.sh testnet lhy "12345678" 0 ABC-520 0xaa25Aa7a19f9c426E07dee59b12f944f4d9f1DD3 $HOME/go/bin/tbnbcli
+./build/token-bind-tool deployBEP20ContractTransferTotalSupplyAndOwnership --bep20-owner {bep20 owner} \
+--config-path {contract byte code path, refer to `script/contract.json`} --network-type {mainnet/testnet}
 ```
 
-2. Suppose you have already issued BEP2 token, deployed BEP20 contract and sent bind transaction, now you just want to approve bind from your Ledger device:
+## Refund rest BNB on temp account
+
 ```shell script
-./build/token-bind-tool approveBindFromLedger --bep2-symbol {bep2 symbol} --bep20-contract-addr {bep20 contract address} --ledger-account-index {ledger key index} --peggy-amount {peggy amount}
+./build/token-bind-tool refundRestBNB --network-type {mainnet/testnet} --recipient {bsc account}
 ```

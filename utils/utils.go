@@ -181,7 +181,7 @@ func SendTransactionFromLedger(rpcClient *ethclient.Client, wallet accounts.Wall
 	return signTx, rpcClient.SendTransaction(context.Background(), signTx)
 }
 
-func ValidatorBSCAddr(addr string) error {
+func ValidateBSCAddr(addr string) error {
 	if !strings.HasPrefix(addr, "0x") || len(addr) != 42 {
 		return fmt.Errorf("invalid BEP20 owner account, expect bsc address, like 0x4E656459ed25bF986Eea1196Bc1B00665401645d")
 	}
@@ -190,10 +190,16 @@ func ValidatorBSCAddr(addr string) error {
 
 func ConvertToBEP20Amount(amount *big.Int, decimals int64) *big.Int {
 	if decimals >= 8 {
-		precision := 10^(decimals - 8)
+		precision := 1
+		for idx := int64(0); idx < decimals - 8 ; idx ++ {
+			precision *= 10
+		}
 		return big.NewInt(1).Mul(amount, big.NewInt(int64(precision)))
 	} else {
-		precision := 10^(8 - decimals)
+		precision := 1
+		for idx := int64(0); idx < 8 - decimals ; idx ++ {
+			precision *= 10
+		}
 		return big.NewInt(1).Div(amount, big.NewInt(int64(precision)))
 	}
 }

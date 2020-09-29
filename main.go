@@ -43,6 +43,7 @@ func main() {
 	rootCmd.AddCommand(
 		command.InitKeyCmd(),
 		command.DeployContractCmd(),
+		command.DeployCanonicalContractCmd(),
 		command.ApproveBindAndTransferOwnershipCmd(),
 		command.DeployBEP20ContractTransferTotalSupplyAndOwnershipCmd(),
 		command.ApproveBindFromLedgerCmd(),

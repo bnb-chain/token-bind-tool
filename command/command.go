@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -48,9 +49,6 @@ func generateOrGetTempAccount(keystorePath string, chainId *big.Int) (*keystore.
 		if err != nil {
 			return nil, accounts.Account{}, err
 		}
-		fmt.Print(fmt.Sprintf("Create temp account: %s", newAccount.Address.String()))
-		utils.PrintAddrExplorerUrl(", explorer url", newAccount.Address.String(), chainId)
-		fmt.Println("--------------------------------------------------------------------------------------------------------------------------------")
 		return keyStore, newAccount, nil
 	} else if len(keyStore.Accounts()) == 1 {
 		accountList := keyStore.Accounts()
@@ -62,9 +60,6 @@ func generateOrGetTempAccount(keystorePath string, chainId *big.Int) (*keystore.
 		if err != nil {
 			return nil, accounts.Account{}, err
 		}
-		fmt.Print(fmt.Sprintf("Load temp account: %s", account.Address.String()))
-		utils.PrintAddrExplorerUrl(", explorer url", account.Address.String(), chainId)
-		fmt.Println("--------------------------------------------------------------------------------------------------------------------------------")
 		return keyStore, account, nil
 	} else {
 		return nil, accounts.Account{}, fmt.Errorf("expect only one or zero keystore file in %s", filepath.Join(path, constValue.BindKeystore))
@@ -143,10 +138,11 @@ func InitKeyCmd() *cobra.Command {
 				return err
 			}
 			keystorePath := viper.GetString(constValue.KeystorePath)
-			_, _, err = generateOrGetTempAccount(keystorePath, chainId)
+			_, acc, err := generateOrGetTempAccount(keystorePath, chainId)
 			if err != nil {
 				return err
 			}
+			fmt.Println(acc.Address.String())
 			return err
 		},
 	}
@@ -173,12 +169,123 @@ func DeployContractCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			_, err = DeployContractFromTempAccount(ethClient, keyStore, tempAccount, configData.ContractData, chainId)
-			return err
+			contractAddr, err := DeployContractFromTempAccount(ethClient, keyStore, tempAccount, configData.ContractData, chainId)
+			if err != nil {
+				return err
+			}
+			fmt.Println(contractAddr.String())
+			return nil
 		},
 	}
 	cmd.Flags().String(constValue.KeystorePath, constValue.BindKeystore, "keystore path")
 	cmd.Flags().String(constValue.ConfigPath, "", "config file path")
+
+	return cmd
+}
+
+func DeployCanonicalContractCmd() *cobra.Command {
+	const (
+		flagCanonicalImplAddr = "canonical-impl-addr"
+		flagName              = "name"
+		flagSymbol            = "symbol"
+		flagDecimals          = "decimals"
+		flagTotalSupply       = "total-supply"
+		flagMintable          = "mintable"
+		flagOwner             = "owner"
+		flagProxyAdmin        = "proxy-admin"
+	)
+	cmd := &cobra.Command{
+		Use:   "deployCanonicalProxyContract --config-path {config-path}",
+		Short: "Deploy a proxy contract to a canonical bep20 implementation",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ethClient, chainId, err := getEnv()
+			if err != nil {
+				return err
+			}
+
+			canonicalImplAddr := viper.GetString(flagCanonicalImplAddr)
+			err = utils.ValidateBSCAddr(canonicalImplAddr)
+			if err != nil {
+				return err
+			}
+
+			name := viper.GetString(flagName)
+			symbol := viper.GetString(flagSymbol)
+			if len(name) == 0 || len(symbol) == 0 {
+				return fmt.Errorf("missing token name or symbol")
+			}
+
+			decimals := viper.GetInt(flagDecimals)
+			if decimals < 0 {
+				return fmt.Errorf("decimals must not be negative")
+			}
+
+			totalSupplyStr := viper.GetString(flagTotalSupply)
+			if len(totalSupplyStr) == 0 {
+				return fmt.Errorf("missing total supply")
+			}
+			totalSupply := big.NewInt(0)
+			totalSupply.SetString(totalSupplyStr, 10)
+			totalSupply = utils.ConvertToBEP20Amount(totalSupply, int64(decimals))
+
+			mintable := viper.GetBool(flagMintable)
+
+			owner := viper.GetString(flagOwner)
+			err = utils.ValidateBSCAddr(owner)
+			if err != nil {
+				return err
+			}
+
+			proxyAdmin := viper.GetString(flagProxyAdmin)
+			err = utils.ValidateBSCAddr(proxyAdmin)
+			if err != nil {
+				return err
+			}
+
+			keystorePath := viper.GetString(constValue.KeystorePath)
+			keyStore, tempAccount, err := generateOrGetTempAccount(keystorePath, chainId)
+			if err != nil {
+				return err
+			}
+
+			canonicalUpgradeableBEP20, err := abi.JSON(strings.NewReader(constValue.CanonicalUpgradeableBEP20))
+			if err != nil {
+				return err
+			}
+
+			abiEncodingInitialize, err := canonicalUpgradeableBEP20.Pack("initialize", name, symbol, uint8(decimals), totalSupply, mintable, common.HexToAddress(owner))
+			if err != nil {
+				return err
+			}
+
+			upgradeableProxyABI, err := abi.JSON(strings.NewReader(constValue.UpgradeableProxyABI))
+			if err != nil {
+				return err
+			}
+
+			abiEncodingConstructor, err := upgradeableProxyABI.Pack("", common.HexToAddress(canonicalImplAddr), common.HexToAddress(proxyAdmin), abiEncodingInitialize)
+			if err != nil {
+				return err
+			}
+			abiEncodingConstructorStr := hex.EncodeToString(abiEncodingConstructor)
+
+			contractAddr, err := DeployContractFromTempAccount(ethClient, keyStore, tempAccount, constValue.CanonicalUpgradeableBEP20BytesCode+abiEncodingConstructorStr, chainId)
+			if err != nil {
+				return err
+			}
+			fmt.Println(contractAddr.String())
+			return nil
+		},
+	}
+	cmd.Flags().String(constValue.KeystorePath, constValue.BindKeystore, "keystore path")
+	cmd.Flags().String(flagCanonicalImplAddr, "0x8feCC1762561eE3D1b2ea003E1d78B71c5581BcE", "canonical implementation address")
+	cmd.Flags().String(flagName, "", "token name")
+	cmd.Flags().String(flagSymbol, "", "token symbol")
+	cmd.Flags().Int(flagDecimals, 18, "token decimals")
+	cmd.Flags().String(flagTotalSupply, "", "total supply")
+	cmd.Flags().Bool(flagMintable, true, "mintable")
+	cmd.Flags().String(flagOwner, "", "bep20 token owner")
+	cmd.Flags().String(flagProxyAdmin, "", "proxy admin")
 
 	return cmd
 }
@@ -200,7 +307,7 @@ func ApproveBindAndTransferOwnershipCmd() *cobra.Command {
 				return fmt.Errorf("invalid bep20 contract address")
 			}
 			bep20Owner := viper.GetString(constValue.BEP20Owner)
-			if utils.ValidatorBSCAddr(bep20Owner) !=nil {
+			if utils.ValidateBSCAddr(bep20Owner) != nil {
 				return err
 			}
 			bep2Symbol := viper.GetString(constValue.BEP2Symbol)
@@ -249,7 +356,7 @@ func DeployBEP20ContractTransferTotalSupplyAndOwnershipCmd() *cobra.Command {
 				return err
 			}
 			bep20Owner := viper.GetString(constValue.BEP20Owner)
-			if utils.ValidatorBSCAddr(bep20Owner) !=nil {
+			if utils.ValidateBSCAddr(bep20Owner) != nil {
 				return err
 			}
 			contractAddr, err := DeployContractFromTempAccount(ethClient, keyStore, tempAccount, config.ContractData, chainId)
@@ -334,7 +441,6 @@ func RefundRestBNBCmd() *cobra.Command {
 }
 
 func DeployContractFromTempAccount(ethClient *ethclient.Client, keyStore *keystore.KeyStore, tempAccount accounts.Account, contractByteCodeStr string, chainId *big.Int) (common.Address, error) {
-	fmt.Println(fmt.Sprintf("Deploy BEP20 contract from account %s", tempAccount.Address.String()))
 	contractByteCode, err := hex.DecodeString(contractByteCodeStr)
 	if err != nil {
 		return common.Address{}, err
@@ -343,17 +449,13 @@ func DeployContractFromTempAccount(ethClient *ethclient.Client, keyStore *keysto
 	if err != nil {
 		return common.Address{}, err
 	}
-	utils.PrintTxExplorerUrl("Deploy BEP20 contract txHash", txHash.String(), chainId)
-	utils.Sleep(10)
+	time.Sleep(10 * time.Second)
 
 	txRecipient, err := ethClient.TransactionReceipt(context.Background(), txHash)
 	if err != nil {
 		return common.Address{}, err
 	}
 	contractAddr := txRecipient.ContractAddress
-	fmt.Print(fmt.Sprintf("The deployed BEP20 contract address is %s", contractAddr.String()))
-	utils.PrintAddrExplorerUrl(" , explorer url", contractAddr.String(), chainId)
-	fmt.Println("--------------------------------------------------------------------------------------------------------------------------------")
 	return contractAddr, nil
 }
 

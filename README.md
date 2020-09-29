@@ -77,6 +77,7 @@ Suppose you have already issued a BEP2 token, and you want to deploy a BEP20 tok
     Fill contract byte code to `contract_data`
 
 4. Deploy contract, bind and transfer ownership:
+
     ```shell script
     ./script/bind.sh {mainnet/testnet} {bep2TokenIssuerKeyName} {password, for ledger key, use empty string: ""} {peggyAmount} {bep2 token symbol} {token owner} {path to bnbcli or tbnbcli}
     ```

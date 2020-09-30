@@ -3,6 +3,8 @@ package utils
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/spf13/viper"
 	"math/big"
 	"strings"
 	"time"
@@ -21,6 +23,30 @@ import (
 func Sleep(second int64) {
 	fmt.Println(fmt.Sprintf("Sleep %d second", second))
 	time.Sleep(time.Duration(second) * time.Second)
+}
+
+func GetEnv() (*ethclient.Client, *big.Int, error) {
+	networkType := viper.GetString(bindconst.NetworkType)
+	if networkType != bindconst.TestNet && networkType != bindconst.Mainnet {
+		return nil, nil, fmt.Errorf("unsupported network type")
+	}
+	var rpcClient *rpc.Client
+	var err error
+	var chainId *big.Int
+	if networkType == bindconst.Mainnet {
+		rpcClient, err = rpc.DialContext(context.Background(), bindconst.MainnnetRPC)
+		if err != nil {
+			return nil, chainId, err
+		}
+		chainId = big.NewInt(bindconst.MainnetChainID)
+	} else {
+		rpcClient, err = rpc.DialContext(context.Background(), bindconst.TestnetRPC)
+		if err != nil {
+			return nil, chainId, err
+		}
+		chainId = big.NewInt(bindconst.TestnetChainID)
+	}
+	return ethclient.NewClient(rpcClient), chainId, nil
 }
 
 func GetTransactor(ethClient *ethclient.Client, keyStore *keystore.KeyStore, account accounts.Account, value *big.Int) *bind.TransactOpts {
@@ -202,4 +228,18 @@ func ConvertToBEP20Amount(amount *big.Int, decimals int64) *big.Int {
 		}
 		return big.NewInt(1).Div(amount, big.NewInt(int64(precision)))
 	}
+}
+
+func BigIntSub(x, y *big.Int) *big.Int {
+	return big.NewInt(0).Sub(x, y)
+}
+
+func BigIntAdd(x... *big.Int) *big.Int {
+	result := big.NewInt(0)
+	for _, ele := range x {
+		if ele != nil {
+			result = big.NewInt(0).Add(result, ele)
+		}
+	}
+	return result
 }

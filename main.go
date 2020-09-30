@@ -48,6 +48,7 @@ func main() {
 		command.DeployBEP20ContractTransferTotalSupplyAndOwnershipCmd(),
 		command.ApproveBindFromLedgerCmd(),
 		command.RefundRestBNBCmd(),
+		command.CrossChainStatsCmd(),
 	)
 	// prepare and add flags
 	rootCmd.PersistentPreRunE = concatCobraCmdFuncs(bindFlagsLoadViper, rootCmd.PersistentPreRunE)

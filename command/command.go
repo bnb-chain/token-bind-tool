@@ -12,12 +12,12 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/accounts/usbwallet"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -28,7 +28,6 @@ import (
 	"github.com/binance-chain/token-bind-tool/contracts/tokenhub"
 	tokenmanager "github.com/binance-chain/token-bind-tool/contracts/tokenmanger"
 	"github.com/binance-chain/token-bind-tool/utils"
-	"github.com/shopspring/decimal"
 )
 
 var (
@@ -418,6 +417,7 @@ func RefundRestBNBCmd() *cobra.Command {
 
 func CrossChainStatsCmd() *cobra.Command {
 	const (
+		stableCoinList = "stable-coin-list"
 		excludeAddressList = "exclude-address-list"
 	)
 	cmd := &cobra.Command{
@@ -429,14 +429,22 @@ func CrossChainStatsCmd() *cobra.Command {
 			if excludeAddressListStr != "" {
 				excludeAddressArray = strings.Split(excludeAddressListStr, ",")
 				for _, addr := range excludeAddressArray {
-					err :=  utils.ValidateBSCAddr(addr)
+					err := utils.ValidateBSCAddr(addr)
 					if err != nil {
 						return err
 					}
 				}
 			}
+			stableCoinListStr := viper.GetString(stableCoinList)
+			stableCoinListArray := []string{}
+			if excludeAddressListStr != "" {
+				stableCoinListArray = strings.Split(stableCoinListStr, ",")
+				for _, stableCoin := range stableCoinListArray {
+					StableCoin[stableCoin] = true
+				}
+			}
 
-			ethClient, chainId, err := utils.GetEnv()
+			ethClient, _, err := utils.GetEnv()
 			if err != nil {
 				return err
 			}
@@ -447,8 +455,8 @@ func CrossChainStatsCmd() *cobra.Command {
 			}
 
 			filterOpts := &bind.FilterOpts{
-				Start: 0,
-				End: nil,
+				Start:   0,
+				End:     nil,
 				Context: context.Background(),
 			}
 			iterator, err := tokenManagerInstance.FilterBindSuccess(filterOpts, nil)
@@ -466,84 +474,29 @@ func CrossChainStatsCmd() *cobra.Command {
 			fmt.Println(fmt.Sprintf("Stardand exclude address: exchange withdraw address %s", constValue.WithdrawAddr.String()))
 			fmt.Println("-----------------------------------------------------------------------------------------------")
 
+			var tokenStatsInfoList []TokenStatsInfo
+			bnbPrice, err := getBNBPrice()
 			for {
 				if iterator.Event != nil {
-					fmt.Println(iterator.Event.ContractAddr.String())
-					utils.PrintAddrExplorerUrl("Peggy token", iterator.Event.ContractAddr.String(), chainId)
-					bep20Instance, err := bep20.NewBep20(iterator.Event.ContractAddr, ethClient)
-					if err != nil {
-						return err
+					tokenStatsInfo, err := buildTokenStatsInfo(ethClient, iterator.Event.ContractAddr, excludeAddressArray, bnbPrice)
+					if err == nil {
+						tokenStatsInfoList = append(tokenStatsInfoList, tokenStatsInfo)
 					}
-					name, err := bep20Instance.Name(utils.GetCallOpts())
-					if err != nil {
-						return err
-					}
-					symbol, err := bep20Instance.Symbol(utils.GetCallOpts())
-					if err != nil {
-						return err
-					}
-					decimals, err := bep20Instance.Decimals(utils.GetCallOpts())
-					if err != nil {
-						return err
-					}
-					totalSupply, err := bep20Instance.TotalSupply(utils.GetCallOpts())
-					if err != nil {
-						return err
-					}
-					owner, err := bep20Instance.GetOwner(utils.GetCallOpts())
-					if err != nil {
-						return err
-					}
-					tokenhubBalance, err := bep20Instance.BalanceOf(utils.GetCallOpts(), constValue.TokenHubContractAddr)
-					if err != nil {
-						return err
-					}
-					superOwnerAddr1Balance, err := bep20Instance.BalanceOf(utils.GetCallOpts(), constValue.SuperOwnerAddr1)
-					if err != nil {
-						return err
-					}
-					superOwnerAddr2Balance, err := bep20Instance.BalanceOf(utils.GetCallOpts(), constValue.SuperOwnerAddr2)
-					if err != nil {
-						return err
-					}
-					withdrawAddrBalance, err := bep20Instance.BalanceOf(utils.GetCallOpts(), constValue.WithdrawAddr)
-					if err != nil {
-						return err
-					}
-
-					excludeBalance := utils.BigIntAdd(tokenhubBalance, superOwnerAddr1Balance, superOwnerAddr2Balance, withdrawAddrBalance)
-					if owner.String() != constValue.SuperOwnerAddr1.String() && owner.String() != constValue.SuperOwnerAddr2.String() {
-						ownerBalance, err := bep20Instance.BalanceOf(utils.GetCallOpts(), owner)
-						if err != nil {
-							return err
-						}
-						excludeBalance = utils.BigIntAdd(excludeBalance, ownerBalance)
-						fmt.Println(fmt.Sprintf("Exclude token owner address %s", owner.String()))
-					}
-
-					for _, addr := range excludeAddressArray {
-						excludeAddressBalance, err := bep20Instance.BalanceOf(utils.GetCallOpts(), common.HexToAddress(addr))
-						if err != nil {
-							return err
-						}
-						excludeBalance = utils.BigIntAdd(excludeBalance, excludeAddressBalance)
-						fmt.Println(fmt.Sprintf("Exclude other address %s", addr))
-					}
-
-					otherBalance := utils.BigIntSub(totalSupply, excludeBalance)
-
-					fmt.Println(fmt.Sprintf("name: %s, symbol: %s, decimals: %d, total supply %s, other balance: %s", name, symbol, decimals, decimal.NewFromBigInt(totalSupply, -int32(decimals.Int64())).String(), decimal.NewFromBigInt(otherBalance, -int32(decimals.Int64())).String()))
-					fmt.Println("-----------------------------------------------------------------------------------------------")
 				}
 				if !iterator.Next() {
 					break
 				}
 			}
-
+			for _, statsInfo := range tokenStatsInfoList {
+				fmt.Println(fmt.Sprintf("name: %s, symbol: %s, decimals: %d, total supply: %s", statsInfo.Name, statsInfo.Symbol, statsInfo.Decimals, statsInfo.TotalSupply.String()))
+				fmt.Println(fmt.Sprintf("bsc circulation: %s, scattered amount: %s, price: %s, scattered market capacity: %s USDT, ", statsInfo.BSCCirculation.String(), statsInfo.ScatteredBalance.String(), statsInfo.Price.String(), statsInfo.ScatteredMarketCapacity.String()))
+				fmt.Println("-----------------------------------------------------------------------------------------------")
+			}
 			return nil
 		},
 	}
 	cmd.Flags().String(excludeAddressList, "", "include withdraw address, super owner addresses")
+	cmd.Flags().String(stableCoinList, "BUSD,USDT,DAI", "stable coin list")
 	return cmd
 }
 

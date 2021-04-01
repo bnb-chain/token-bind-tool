@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/binance-chain/token-bind-tool/contracts/erc721"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -437,6 +438,36 @@ func RefundRestBNBCmd() *cobra.Command {
 	}
 	cmd.Flags().String(constValue.KeystorePath, constValue.BindKeystore, "keystore path")
 	cmd.Flags().String(constValue.Recipient, "", "recipient, bsc address")
+	return cmd
+}
+
+func QueryERC721TotalSupply() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "queryERC721TotalSupply",
+		Short: "Query erc721 totalSupply",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ethClient, _, err := getEnv()
+			if err != nil {
+				return err
+			}
+			erc721AddrStr := viper.GetString(constValue.ERC721Addr)
+			if !strings.HasPrefix(erc721AddrStr, "0x") || len(erc721AddrStr) != constValue.BSCAddrLength {
+				return fmt.Errorf("Invalid erc721 contract address")
+			}
+
+			erc721Inst, err := erc721.NewErc721(common.HexToAddress(erc721AddrStr), ethClient)
+			if err != nil {
+				return err
+			}
+			totalSupply, err := erc721Inst.TotalSupply(utils.GetCallOpts())
+			if err != nil {
+				return err
+			}
+			fmt.Println(fmt.Sprintf("totalSupply of %s is %s", erc721AddrStr, totalSupply.String()))
+			return nil
+		},
+	}
+	cmd.Flags().String(constValue.ERC721Addr, "", "keystore path")
 	return cmd
 }
 

@@ -10,7 +10,7 @@ const (
 	NetworkType         = "network-type"
 	KeystorePath        = "keystore-path"
 	ConfigPath          = "config-path"
-	Operation           = "operation"
+	ERC721Addr          = "erc721-addr"
 	BEP20ContractAddr   = "bep20-contract-addr"
 	BEP20Owner          = "bep20-owner"
 	BEP2Symbol          = "bep2-symbol"

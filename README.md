@@ -1,3 +1,4 @@
+**This repo is out of maintenance and decommissioned.**
 # token-bind-tool
 
 Tool to bind BEP2 tokens and BEP20 tokens. please refer to [document](https://docs.binance.org/smart-chain/developer/bind-tokens.html) for detail bind mechanism.

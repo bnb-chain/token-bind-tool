@@ -1,7 +1,6 @@
-**This repo is out of maintenance and decommissioned.**
 # token-bind-tool
 
-Tool to bind BEP2 tokens and BEP20 tokens. please refer to [document](https://docs.binance.org/smart-chain/developer/bind-tokens.html) for detail bind mechanism.
+Tool to bind BEP2 tokens and BEP20 tokens. Please refer to [document](https://docs.binance.org/smart-chain/developer/bind-tokens.html) for detail bind mechanism.
 
 ## Compile
 
@@ -12,7 +11,7 @@ make build
 
 ## Preparation for binding tokens
 
-1. Generate temp account (Deploy contract on BNB Smart Chain):
+1. Generate a temp account (Deploy contract on BNB Smart Chain):
     ```shell script
     ./build/token-bind-tool initKey --network-type {testnet/mainnet}
     ```
@@ -36,15 +35,15 @@ make build
    --to 0xde9Aa1d632b48d881B50528FC524C88474Ec8809 --amount 100000000:BNB
    ```
    
-   2.2 You can also transfer BNB from other BNB Smart Chain account with [Metamask](https://docs.binance.org/smart-chain/wallet/metamask.html).
+   2.2 You can also transfer BNB from another BNB Smart Chain account with [Metamask](https://docs.binance.org/smart-chain/wallet/metamask.html).
 
 ## Bind BEP2 token with BEP20 token
 
 ### Case 1
 
-Suppose you have already issued a BEP2 token, and you want to deploy a BEP20 token and bind it with existing BEP2 token:
+Suppose you have already issued a BEP2 token, and you want to deploy a BEP20 token and bind it with the existing BEP2 token:
 
-1. Import bep2 token owner key(Send bind transaction on BNB Chain):
+1. Import bep2 token owner key (Send bind transaction on BNB Chain):
 
     1.1 From ledger: connect ledger to your computer and open BNB Chain App
     ```shell script
@@ -90,7 +89,7 @@ Suppose you have already issued a BEP2 token, and you want to deploy a BEP20 tok
 
 ### Case 2
 
-Suppose you have already issued BEP2 token, deployed BEP20 contract and sent bind transaction, now you just want to approve bind from your Ledger device:
+Suppose you have already issued BEP2 token, deployed BEP20 contract and sent bind transaction, now you only want to approve bind from your Ledger device:
 
 1. Connect ledger to your machine and open Ethereum app.
 2. Execute this command to approve bind:
@@ -101,13 +100,13 @@ Suppose you have already issued BEP2 token, deployed BEP20 contract and sent bin
 
 ### Case 3
 
-Suppose you just want to deploy a BEP20 contract and transfer all token and ownership to your owner account, then you can try this command:
+Suppose you want to deploy a BEP20 contract and transfer all tokens and ownership to your owner account, then you can try this command:
 ```shell script
 ./build/token-bind-tool deployBEP20ContractTransferTotalSupplyAndOwnership --bep20-owner {bep20 owner} \
 --config-path {contract byte code path, refer to `script/contract.json`} --network-type {mainnet/testnet}
 ```
 
-## Refund rest BNB on temp account
+## Refund rest BNB on a temp account
 
 ```shell script
 ./build/token-bind-tool refundRestBNB --network-type {mainnet/testnet} --recipient {bsc account}

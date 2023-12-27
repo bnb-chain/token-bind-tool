@@ -15,6 +15,5 @@
 # vendor/
 
 bind_keystore/*
-*.json
 build/*
 .idea/*

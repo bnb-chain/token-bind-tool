@@ -29,10 +29,16 @@ then
    nodeUrl="http://data-seed-pre-0-s3.binance.org:80"
 fi
 
-./build/token-bind-tool deployContract --config-path script/contract.json --network-type $networkType
+result=$(./build/token-bind-tool deployContract --config-path script/contract.json --network-type $networkType)
+# Check the exit status of the previous command
+if [ $? -ne 0 ]; then
+   echo $result
+    # The exit status is not 0, indicating an error
+   exit 1
+fi
 
-echo "Please input the new deploy bep20 contract address "
-read bep20ContractAddr
+bep20ContractAddr=$result
+echo "bep20ContractAddr: $bep20ContractAddr" 
 
 if [ $passwd == "" ]
 then
@@ -43,6 +49,11 @@ else
   echo $passwd | $binaryPath bridge bind --symbol $bep2TokenSymbol --amount $peggyAmount --expire-time `expr $(date +%s) + 3600` \
 --contract-decimals 18 --from $bep2TokenOwnerKeyName --chain-id $chainId --contract-address $bep20ContractAddr \
 --node $nodeUrl
+fi
+# Check the exit status of the previous command
+if [ $? -ne 0 ]; then
+    # The exit status is not 0, indicating an error
+   exit 1
 fi
 
 

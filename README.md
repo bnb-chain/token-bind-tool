@@ -59,15 +59,17 @@ Suppose you have already issued a BEP2 token, and you want to deploy a BEP20 tok
     2.1 You can refer to [BEP20 Template](https://github.com/binance-chain/bsc-genesis-contract/blob/master/contracts/bep20_template/BEP20Token.template) and modify it according to your own requirements.
         
     **NOTE 1:** Ensure the BEP20 symbol is identical to the prefix of a BEP2 token symbol. Suppose a BEP2 token symbol is `ABC-123`, then the BEP20 symbol must be `ABC`.
-    
-    **NOTE 2:** Ensure the total supply equals to the BEP2 token total supply. As we know, the decimals of BEP2 tokens are 8, if the BEP20 decimal is 18, then the BEP20 total supply must be `BEP2_total_supply*10^10`.
+   
+    **NOTE 2:** Ensure the the BEP20 contract implement the `getOwner` interface, and the owner have more than ${peggy-amount} tokens. ${peggy-amount} is the maximum amount of BEP2 tokens that can be transferred to the BSC network.
+   
+    **NOTE 3:** Ensure the total supply equals to the BEP2 token total supply. As we know, the decimals of BEP2 tokens are 8, if the BEP20 decimal is 18, then the BEP20 total supply must be `BEP2_total_supply*10^10`.
 
-    **NOTE 3:** If your BEP2 token is mintable, then you'd better implement `mint` in BEP20 contract. Otherwise, you'd better remove `mint` in BEP20 contract.
+    **NOTE 4:** If your BEP2 token is mintable, then you'd better implement `mint` in BEP20 contract. Otherwise, you'd better remove `mint` in BEP20 contract.
    
     2.2 Compile your contract with [Remix](https://remix.ethereum.org) and get contract byte code:
     ![img](pictures/compile.png)
     
-3. Edit `script/contract.json` to add contract byte code:
+4. Edit `script/contract.json` to add contract byte code:
 
     ```json
     {
@@ -76,7 +78,7 @@ Suppose you have already issued a BEP2 token, and you want to deploy a BEP20 tok
     ```
     Fill contract byte code to `contract_data`
 
-4. Deploy contract, bind and transfer ownership:
+5. Deploy contract, bind and transfer ownership:
 
     ```shell script
     ./script/bind.sh {mainnet/testnet} {bep2TokenIssuerKeyName} {password, for ledger key, use empty string: ""} {peggyAmount} {bep2 token symbol} {token owner} {path to bnbcli or tbnbcli}

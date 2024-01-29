@@ -91,7 +91,21 @@ Suppose you have already issued a BEP2 token, and you want to deploy a BEP20 tok
 
 ### Case 2
 
-Suppose you have already issued BEP2 token, deployed BEP20 contract and sent bind transaction, now you only want to approve bind from your Ledger device:
+Suppose you have already issued BEP2 token, deployed BEP20 contract and sent bind transaction.
+
+There are several requirements for binding existing BEP2 token and BEP20 token.
+* The length of BEP20 symbol should be between 2 and 8
+* The symbol of BEP20 should match the symbol of BEP2 (ignoring the `-` and suffix)
+* The total supply of BEP20 should not exceed the max allowed supply, which is 9000000000000000000 with decimal 8
+* The total supply of BEP20 should be equal to the total supply of BEP2, considering the different decimals
+* The BEP20 contract should has `getOwner` function, which is part of BEP20 standards
+
+To check whether we can bind the BEP2 token and BEP20 token, please run this command.
+```shell script
+./build/token-bind-tool preCheck --bep2-symbol {bep2 symbol} --bep20-contract-addr {bep20 contract address}
+```
+
+It the check passes, now you can approve bind from your Ledger device:
 
 1. Connect ledger to your machine and open Ethereum app.
 2. Execute this command to approve bind:

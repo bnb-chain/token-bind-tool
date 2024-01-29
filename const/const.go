@@ -5,18 +5,18 @@ import (
 )
 
 const (
-	Passwd              = "12345678"
+	Passwd = "12345678"
 
-	NetworkType         = "network-type"
-	KeystorePath        = "keystore-path"
-	ConfigPath          = "config-path"
-	Operation           = "operation"
-	BEP20ContractAddr   = "bep20-contract-addr"
-	BEP20Owner          = "bep20-owner"
-	BEP2Symbol          = "bep2-symbol"
-	Recipient           = "recipient"
-	PeggyAmount         = "peggy-amount"
-	LedgerAccountIndex  = "ledger-account-index"
+	NetworkType        = "network-type"
+	KeystorePath       = "keystore-path"
+	ConfigPath         = "config-path"
+	Operation          = "operation"
+	BEP20ContractAddr  = "bep20-contract-addr"
+	BEP20Owner         = "bep20-owner"
+	BEP2Symbol         = "bep2-symbol"
+	Recipient          = "recipient"
+	PeggyAmount        = "peggy-amount"
+	LedgerAccountIndex = "ledger-account-index"
 
 	Mainnet = "mainnet"
 	TestNet = "testnet"
@@ -39,6 +39,9 @@ const (
 	TestnetExplorerAddressUrl = "%s: https://testnet.bscscan.com/address/%s"
 
 	BSCAddrLength = 42
+
+	BcMaxSupply        = 9000000000000000000
+	BcMainnnetTokenUrl = "https://dex.binance.org/api/v1/tokens?limit=1000"
 )
 
 var (

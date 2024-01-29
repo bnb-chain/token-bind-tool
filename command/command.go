@@ -3,8 +3,12 @@ package command
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"github.com/binance-chain/token-bind-tool/types"
+	"github.com/pkg/errors"
 	"math/big"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -680,4 +684,149 @@ func RefundRestBNB(ethClient *ethclient.Client, keyStore *keystore.KeyStore, tem
 	utils.PrintTxExplorerUrl("Refund txHash", txHash.String(), chainId)
 	fmt.Println("--------------------------------------------------------------------------------------------------------------------------------")
 	return nil
+}
+
+func PreCheckCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "preCheck",
+		Short: "Verify whether the BEP2 and BEP20 can be bind-ed or not, and give suggestions based on different cases",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if viper.GetString(constValue.NetworkType) == constValue.TestNet {
+				return fmt.Errorf("this command only works on mainnet")
+			}
+			ethClient, _, err := getEnv()
+			if err != nil {
+				return err
+			}
+
+			bep20ContractAddr := viper.GetString(constValue.BEP20ContractAddr)
+			if !strings.HasPrefix(bep20ContractAddr, "0x") || len(bep20ContractAddr) != constValue.BSCAddrLength {
+				return fmt.Errorf("invalid bep20 contract address")
+			}
+			bep2Symbol := viper.GetString(constValue.BEP2Symbol)
+			if len(bep2Symbol) == 0 {
+				return fmt.Errorf("missing bep2 symbol")
+			}
+
+			return PreCheckBind(ethClient, bep2Symbol, common.HexToAddress(bep20ContractAddr))
+		},
+	}
+	cmd.Flags().String(constValue.BEP20ContractAddr, "", "bep20 contract address")
+	cmd.Flags().String(constValue.BEP2Symbol, "", "bep2 token symbol")
+	return cmd
+}
+
+func PreCheckBind(ethClient *ethclient.Client, bep2Symbol string, bep20ContractAddr common.Address) error {
+	bep2Instance, err := getBep2Token(bep2Symbol)
+	if err != nil {
+		return err
+	}
+	if bep2Instance.ContractAddress != nil {
+		return errors.Errorf("the BEP2 %s is already bind to %s", bep2Symbol, bep2Instance.ContractAddress)
+	}
+
+	bep20Instance, err := bep20.NewBep20(bep20ContractAddr, ethClient)
+	if err != nil {
+		return err
+	}
+	bep20Symbol, err := bep20Instance.Symbol(utils.GetCallOpts())
+	if err != nil {
+		return err
+	}
+	bep20TotalSupply, err := bep20Instance.TotalSupply(utils.GetCallOpts())
+	if err != nil {
+		return err
+	}
+	bep20Decimals, err := bep20Instance.Decimals(utils.GetCallOpts())
+	if err != nil {
+		return err
+	}
+
+	hasError := false
+	fmt.Printf("\n1. Checking BEP20 symbol length: %s \n", bep20Symbol)
+	if len(bep20Symbol) < 2 || len(bep20Symbol) > 8 {
+		hasError = true
+		fmt.Printf("Cannot bind: BEP20 symbol length should be between 2 and 8\n")
+		fmt.Printf("Suggestion: please swap tokens offchain, e.g., " +
+			"through CEXs (if your tokens are listed on Binance.com, you can ask your users deposit their tokens to it then do the exchange)\n")
+	} else {
+		fmt.Println("Pass")
+	}
+
+	fmt.Printf("\n2. Checking symbols match or not, BEP2: %s, BEP20: %s \n", bep2Symbol, bep20Symbol)
+	if !strings.HasPrefix(bep2Symbol, bep20Symbol) || bep2Symbol[len(bep20Symbol)] != '-' {
+		hasError = true
+		fmt.Printf("Cannot bind: BEP2 and BEP20 sybmols do not match\n")
+		fmt.Printf("Suggestion: please swap tokens offchain, e.g., " +
+			"through CEXs (if your tokens are listed on Binance.com, you can ask your users deposit their tokens to it then do the exchange)\n")
+	} else {
+		fmt.Println("Pass")
+	}
+
+	fmt.Printf("\n3. Checking BEP20 total supply exceeds the max BEP2 allowance or not: %s \n", bep20Symbol)
+	maxBep2Supply := utils.ConvertToBEP20Amount(big.NewInt(constValue.BcMaxSupply), bep20Decimals.Int64())
+	if bep20TotalSupply.Cmp(maxBep2Supply) > 0 {
+		hasError = true
+		fmt.Printf("Cannot bind: BEP20 total supply exceeds the max BEP2 allowance\n")
+		fmt.Println("BEP20 total supply: ", bep20TotalSupply)
+		fmt.Println("BEP2 max allowed total supply: ", maxBep2Supply)
+		fmt.Printf("Suggestion: please mange your BEP20 token total supply, e.g., burn tokens")
+	} else {
+		fmt.Println("Pass")
+	}
+
+	fmt.Printf("\n4. Checking BEP20 total supply and BEP2 total supply match or not \n")
+	bep2Supply, err := utils.ConvertToBEP20AmountWithDec(bep2Instance.TotalSupply, bep20Decimals.Int64())
+	if err != nil {
+		return err
+	}
+	if bep20TotalSupply.Cmp(bep2Supply) > 0 {
+		hasError = true
+		fmt.Printf("Cannot bind: BEP20 total supply and BEP2 total supply do not match \n")
+		fmt.Println("BEP20 total supply: ", bep20TotalSupply)
+		fmt.Println("BEP2 total supply: ", bep2Supply)
+		fmt.Printf("Suggestion: please mange your BEP20/BEP2 token total supply, e.g., burn tokens, mint tokens, " +
+			"to make use they are equal using different decimals\n")
+	} else {
+		fmt.Println("Pass")
+	}
+
+	fmt.Printf("\n5. Checking BEP20 has getOwner function or not: %s \n", bep20Symbol)
+	_, err = bep20Instance.GetOwner(utils.GetCallOpts())
+	if err != nil {
+		hasError = true
+		fmt.Printf("Cannot bind: BEP20 does not implement getOwner funtion \n")
+		fmt.Printf("Suggestion: please upgrade your contract to follow BEP20 standards, i.e., adding getOwner function")
+	} else {
+		fmt.Println("Pass")
+	}
+
+	if hasError {
+		fmt.Printf("\n The BEP2 and BEP20 cannot bind, please take actions according the suggestions \n")
+	} else {
+		fmt.Printf("\n You can bind the BEP2 and BEP20 tokens, please read README and take actions \n")
+	}
+	return nil
+}
+
+func getBep2Token(symbol string) (*types.Bep2, error) {
+	myClient := &http.Client{Timeout: 10 * time.Second}
+	r, err := myClient.Get(constValue.BcMainnnetTokenUrl)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Body.Close()
+
+	var tokens []*types.Bep2
+	err = json.NewDecoder(r.Body).Decode(&tokens)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, token := range tokens {
+		if token.Symbol == symbol {
+			return token, err
+		}
+	}
+	return nil, errors.Errorf("cannot find the BEP2 %s", symbol)
 }

@@ -5,8 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/binance-chain/token-bind-tool/types"
-	"github.com/pkg/errors"
 	"math/big"
 	"net/http"
 	"os"
@@ -22,6 +20,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -31,6 +30,7 @@ import (
 	"github.com/binance-chain/token-bind-tool/contracts/ownable"
 	"github.com/binance-chain/token-bind-tool/contracts/tokenhub"
 	tokenmanager "github.com/binance-chain/token-bind-tool/contracts/tokenmanger"
+	"github.com/binance-chain/token-bind-tool/types"
 	"github.com/binance-chain/token-bind-tool/utils"
 )
 

@@ -141,7 +141,7 @@ Otherwise, you can move on to bind the tokens.
 Firstly, you should send a bind transaction to Beacon chain with the following command:
 
 ```shell script
-bnbcli bridge bind --symbol {bep2 symbol} --amount {peggy amount} --expire-time `expr $(date +%s) + 3600` \
+bnbcli bridge bind --symbol {bep2 symbol} --amount {peggy amount} --expire-time `expr $(date +%s) + 604800` \
 --contract-decimals {bep20 contract decimals} --from {bep2TokenIssuerKeyName} --chain-id $chainId --contract-address {bep20 contract address} \
 --node {bc noe url}
 ```

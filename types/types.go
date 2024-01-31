@@ -19,3 +19,8 @@ type SendTxArgs struct {
 	Input *hexutil.Bytes `json:"input"`
 }
 
+type Bep2 struct {
+	Symbol          string  `json:"symbol"`
+	ContractAddress *string `json:"contract_address"`
+	TotalSupply     string  `json:"total_supply"`
+}

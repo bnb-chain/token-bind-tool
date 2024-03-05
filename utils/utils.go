@@ -16,7 +16,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/shopspring/decimal"
 )
 
 func Sleep(second int64) {
@@ -202,25 +201,5 @@ func ConvertToBEP20Amount(amount *big.Int, decimals int64) *big.Int {
 			precision *= 10
 		}
 		return big.NewInt(1).Div(amount, big.NewInt(int64(precision)))
-	}
-}
-
-func ConvertToBEP20AmountWithDec(amountStr string, decimals int64) (*big.Int, error) {
-	amount, err := decimal.NewFromString(amountStr)
-	if err != nil {
-		return nil, err
-	}
-	if decimals >= 8 {
-		precision := 1
-		for idx := int64(0); idx < decimals-8; idx++ {
-			precision *= 10
-		}
-		return amount.Mul(decimal.New(int64(precision), 0)).BigInt(), nil
-	} else {
-		precision := 1
-		for idx := int64(0); idx < 8-decimals; idx++ {
-			precision *= 10
-		}
-		return amount.Div(decimal.New(int64(precision), 0)).BigInt(), nil
 	}
 }

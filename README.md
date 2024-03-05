@@ -105,8 +105,10 @@ token:
 5. Deploy contract, bind and transfer ownership:
 
     ```shell script
-    ./script/bind.sh {mainnet/testnet} {bep2TokenIssuerKeyName} {password, for ledger key, use empty string: ""} {peggyAmount} {bep2 token symbol} {token owner} {path to bnbcli or tbnbcli}
+    ./script/bind.sh {mainnet/testnet} {bep2TokenIssuerKeyName} {password, for ledger key, use empty string: ""} {peggy amount} {bep2 token symbol} {token owner} {path to bnbcli or tbnbcli}
     ```
+
+Here `{peggy amount}` is the number of tokens that circulating on BSC. In this case, it should be `0`.
 
    Example command:
     ```shell script
@@ -145,6 +147,10 @@ bnbcli bridge bind --symbol {bep2 symbol} --amount {peggy amount} --expire-time 
 --contract-decimals {bep20 contract decimals} --from {bep2TokenIssuerKeyName} --chain-id $chainId --contract-address {bep20 contract address} \
 --node {bc noe url}
 ```
+
+Here `{peggy amount}` is the number of tokens that circulating on BSC. The owner of this BEP2 token must hold 
+more than `{peggy amount}` tokens for it will be locked on the BC side. Meanwhile, the owner of the BEP20 token must hold 
+more than `{total supply} - {peggy amount}` tokens on the BSC side.
 
 Example command:
 

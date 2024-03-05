@@ -21,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/pkg/errors"
+	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -776,11 +777,13 @@ func PreCheckBind(ethClient *ethclient.Client, bep2Symbol string, bep20ContractA
 	}
 
 	fmt.Printf("\n4. Checking BEP20 total supply and BEP2 total supply match or not \n")
-	bep2Supply, err := utils.ConvertToBEP20AmountWithDec(bep2Instance.TotalSupply, bep20Decimals.Int64())
+	amount, err := decimal.NewFromString(bep2Instance.TotalSupply)
 	if err != nil {
 		return err
 	}
-	if bep20TotalSupply.Cmp(bep2Supply) > 0 {
+	amount = amount.Mul(decimal.New(int64(1e8), 0))
+	bep2Supply := utils.ConvertToBEP20Amount(amount.BigInt(), bep20Decimals.Int64())
+	if bep20TotalSupply.Cmp(bep2Supply) != 0 {
 		hasError = true
 		fmt.Printf("Cannot bind: BEP20 total supply and BEP2 total supply do not match \n")
 		fmt.Println("BEP20 total supply: ", bep20TotalSupply)

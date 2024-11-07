@@ -1,0 +1,9 @@
+{./build/token-bind-tool refundRestBNB --network-type {mainnet/testnet} --recipient {bsc account}./build/token-bind-tool deployBEP20ContractTransferTotalSupplyAndOwnership --bep20-owner {bep20 owner} \
+--config-path {contract byte code path, refer to `script/contract.json`} --network-type {mainnet/testnet}./build/token-bind-tool approveBindFromLedger --bep2-symbol {bep2 symbol} --bep20-contract-addr {bep20 contract address} \
+--ledger-account-index {ledger key index} --peggy-amount {peggy amount} --network-type {mainnet/testnet}bnbcli bridge bind --symbol {bep2 symbol} --amount {peggy amount} --expire-time `expr $(date +%s) + 604800` \
+--contract-decimals {bep20 contract decimals} --from {bep2TokenIssuerKeyName} --chain-id $chainId --contract-address {bep20 contract address} \
+--node {bc noe url}./build/token-bind-tool preCheck --bep2-symbol {bep2 symbol} --bep20-contract-addr {bep20 contract address}
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "features": {
+  }
+}

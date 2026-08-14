@@ -105,14 +105,16 @@ token:
 5. Deploy contract, bind and transfer ownership:
 
     ```shell script
-    ./script/bind.sh {mainnet/testnet} {bep2TokenIssuerKeyName} {password, for ledger key, use empty string: ""} {peggy amount} {bep2 token symbol} {token owner} {path to bnbcli or tbnbcli}
+    ./script/bind.sh {mainnet/testnet} {bep2TokenIssuerKeyName} {prompt, for ledger key use empty string: ""} {peggy amount} {bep2 token symbol} {token owner} {path to bnbcli or tbnbcli}
     ```
+
+Use `prompt` to read the password without echoing it or storing it in shell history. Passing a literal password remains supported for backward compatibility, but is discouraged because command arguments may be visible to other processes owned by the same user.
 
 Here `{peggy amount}` is the number of tokens that circulating on BSC. In this case, it should be `0`.
 
    Example command:
     ```shell script
-    ./script/bind.sh testnet bep2TokenIssuer "12345678" 0 ABC-D9B 0xaa25Aa7a19f9c426E07dee59b12f944f4d9f1DD3 $HOME/go/bin/tbnbcli
+    ./script/bind.sh testnet bep2TokenIssuer prompt 0 ABC-D9B 0xaa25Aa7a19f9c426E07dee59b12f944f4d9f1DD3 $HOME/go/bin/tbnbcli
     ```
 
 ### Case 2

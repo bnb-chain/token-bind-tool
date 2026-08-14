@@ -2,15 +2,27 @@
 
 networkType=$1
 bep2TokenOwnerKeyName=$2
-passwd=$3
+passwordArg=$3
 peggyAmount=$4
 bep2TokenSymbol=$5
 tokenOwner=$6
 binaryPath=$7
 
+passwd=""
+if [ "$passwordArg" = "prompt" ]; then
+   read -r -s -p "BEP2 token owner password: " passwd
+   echo
+   if [ -z "$passwd" ]; then
+      echo "Error: password cannot be empty when using 'prompt'." >&2
+      exit 1
+   fi
+elif [ -n "$passwordArg" ]; then
+   passwd=$passwordArg
+   echo "Warning: passing a password as an argument exposes it in shell history and process listings; use 'prompt' instead." >&2
+fi
+
 echo "network type: " $networkType
 echo "bep2TokenOwnerKeyName: " $bep2TokenOwnerKeyName
-echo "passwd: " $passwd
 echo "peggy amount: " $peggyAmount
 echo "bep2 symbol: " $bep2TokenSymbol
 echo "token owner: " $tokenOwner
@@ -40,13 +52,13 @@ fi
 bep20ContractAddr=$result
 echo "bep20ContractAddr: $bep20ContractAddr" 
 
-if [ $passwd == "" ]
+if [ -z "$passwd" ]
 then
-   $binaryPath bridge bind --symbol $bep2TokenSymbol --amount $peggyAmount --expire-time `expr $(date +%s) + 3600` \
+   "$binaryPath" bridge bind --symbol "$bep2TokenSymbol" --amount "$peggyAmount" --expire-time `expr $(date +%s) + 3600` \
 --contract-decimals 18 --from $bep2TokenOwnerKeyName --chain-id $chainId --contract-address $bep20ContractAddr \
 --node $nodeUrl
 else
-  echo $passwd | $binaryPath bridge bind --symbol $bep2TokenSymbol --amount $peggyAmount --expire-time `expr $(date +%s) + 3600` \
+  printf '%s\n' "$passwd" | "$binaryPath" bridge bind --symbol "$bep2TokenSymbol" --amount "$peggyAmount" --expire-time `expr $(date +%s) + 3600` \
 --contract-decimals 18 --from $bep2TokenOwnerKeyName --chain-id $chainId --contract-address $bep20ContractAddr \
 --node $nodeUrl
 fi
